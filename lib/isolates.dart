@@ -11,7 +11,7 @@ import 'utils.dart';
 ///
 /// Esta función está en su propio archivo para que el closure que se envía al
 /// isolate no capture el Ref de Riverpod, que no se puede enviar.
-Stream<Crossword> exploreCrosswordSolutions({
+Stream<WorkQueue> exploreCrosswordSolutions({
   required Crossword crossword,
   required BuiltSet<String> wordList,
 }) async* {
@@ -73,10 +73,11 @@ Stream<Crossword> exploreCrosswordSolutions({
 
       if (crossword != null) {
         workQueue = workQueue.updateFrom(crossword);
-        yield crossword;
       } else {
         workQueue = workQueue.remove(location);
       }
+      // Se emite la cola completa para poder mostrar estadísticas.
+      yield workQueue;
     } catch (e) {
       debugPrint('Error running isolate: $e');
     }

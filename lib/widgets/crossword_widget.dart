@@ -29,9 +29,9 @@ class CrosswordWidget extends ConsumerWidget {
         builder: (context, ref, _) {
           // Cada celda solo se reconstruye cuando cambia su propio carácter.
           final character = ref.watch(
-            crosswordProvider.select(
-              (crosswordAsync) => crosswordAsync.when(
-                data: (crossword) => crossword.characters[location],
+            workQueueProvider.select(
+              (workQueueAsync) => workQueueAsync.when(
+                data: (workQueue) => workQueue.crossword.characters[location],
                 error: (error, stackTrace) => null,
                 loading: () => null,
               ),
