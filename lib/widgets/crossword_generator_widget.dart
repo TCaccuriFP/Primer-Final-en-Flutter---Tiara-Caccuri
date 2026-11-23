@@ -4,20 +4,30 @@ import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 
 import '../model.dart';
 import '../providers.dart';
+import 'crossword_info_widget.dart';
 
-class CrosswordWidget extends ConsumerWidget {
-  const CrosswordWidget({super.key});
+/// Muestra el crucigrama mientras se genera, con el panel de estadísticas.
+class CrosswordGeneratorWidget extends ConsumerWidget {
+  const CrosswordGeneratorWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final size = ref.watch(sizeProvider);
-    return TableView.builder(
-      diagonalDragBehavior: DiagonalDragBehavior.free,
-      cellBuilder: _buildCell,
-      columnCount: size.width,
-      columnBuilder: (index) => _buildSpan(context, index),
-      rowCount: size.height,
-      rowBuilder: (index) => _buildSpan(context, index),
+    final showDisplayInfo = ref.watch(showDisplayInfoProvider);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: TableView.builder(
+            diagonalDragBehavior: DiagonalDragBehavior.free,
+            cellBuilder: _buildCell,
+            columnCount: size.width,
+            columnBuilder: (index) => _buildSpan(context, index),
+            rowCount: size.height,
+            rowBuilder: (index) => _buildSpan(context, index),
+          ),
+        ),
+        if (showDisplayInfo) CrosswordInfoWidget(),
+      ],
     );
   }
 

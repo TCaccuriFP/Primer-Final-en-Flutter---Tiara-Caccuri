@@ -204,6 +204,79 @@ class WorkerCount extends _$WorkerCount {
   void setCount(BackgroundWorkers count) => state = count;
 }
 
+/// Estado del juego. Cuando la generación termina, arma el juego en un
+/// isolate a partir del crucigrama generado.
+@riverpod
+class Puzzle extends _$Puzzle {
+  model.CrosswordPuzzleGame _puzzle = model.CrosswordPuzzleGame.from(
+    crossword: model.Crossword.crossword(width: 0, height: 0),
+    candidateWords: BuiltSet<String>(),
+  );
+
+  /// Crucigrama para el que ya se está armando un juego.
+  model.Crossword? _pending;
+
+  @override
+  model.CrosswordPuzzleGame build() {
+    final size = ref.watch(sizeProvider);
+    final wordList = ref.watch(wordListProvider).value;
+    final workQueue = ref.watch(workQueueProvider).value;
+
+    if (wordList != null &&
+        workQueue != null &&
+        workQueue.isCompleted &&
+        workQueue.crossword != _pending &&
+        (_puzzle.crossword.height != size.height ||
+            _puzzle.crossword.width != size.width ||
+            _puzzle.crossword != workQueue.crossword)) {
+      _pending = workQueue.crossword;
+      compute(_puzzleFromCrosswordTrampoline, (
+        workQueue.crossword,
+        wordList,
+      )).then((puzzle) {
+        if (!ref.mounted) return;
+        _puzzle = puzzle;
+        ref.invalidateSelf();
+      });
+    }
+
+    return _puzzle;
+  }
+
+  /// Elige o quita una palabra; la validación corre en un isolate.
+  Future<void> selectWord({
+    required model.Location location,
+    required String word,
+    required model.Direction direction,
+  }) async {
+    final candidate = await compute(_puzzleSelectWordTrampoline, (
+      _puzzle,
+      location,
+      word,
+      direction,
+    ));
+
+    if (!ref.mounted) return;
+    if (candidate != null) {
+      _puzzle = candidate;
+      ref.invalidateSelf();
+    } else {
+      debugPrint('Invalid word selection: $word');
+    }
+  }
+}
+
+// Funciones de nivel superior ("trampolines") para compute: así el isolate
+// no captura `this` del notifier, que tiene el Ref y no se puede enviar.
+Future<model.CrosswordPuzzleGame> _puzzleFromCrosswordTrampoline(
+  (model.Crossword, BuiltSet<String>) args,
+) async =>
+    model.CrosswordPuzzleGame.from(crossword: args.$1, candidateWords: args.$2);
+
+model.CrosswordPuzzleGame? _puzzleSelectWordTrampoline(
+  (model.CrosswordPuzzleGame, model.Location, String, model.Direction) args,
+) => args.$1.selectWord(location: args.$2, word: args.$3, direction: args.$4);
+
 /// Estadísticas formateadas para el panel.
 @riverpod
 class DisplayInfo extends _$DisplayInfo {

@@ -433,6 +433,69 @@ abstract class _$WorkerCount extends $Notifier<BackgroundWorkers> {
   }
 }
 
+/// Estado del juego. Cuando la generación termina, arma el juego en un
+/// isolate a partir del crucigrama generado.
+
+@ProviderFor(Puzzle)
+final puzzleProvider = PuzzleProvider._();
+
+/// Estado del juego. Cuando la generación termina, arma el juego en un
+/// isolate a partir del crucigrama generado.
+final class PuzzleProvider
+    extends $NotifierProvider<Puzzle, model.CrosswordPuzzleGame> {
+  /// Estado del juego. Cuando la generación termina, arma el juego en un
+  /// isolate a partir del crucigrama generado.
+  PuzzleProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'puzzleProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$puzzleHash();
+
+  @$internal
+  @override
+  Puzzle create() => Puzzle();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(model.CrosswordPuzzleGame value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<model.CrosswordPuzzleGame>(value),
+    );
+  }
+}
+
+String _$puzzleHash() => r'1d6355fde683f089b8819cd357dd7093a82f8397';
+
+/// Estado del juego. Cuando la generación termina, arma el juego en un
+/// isolate a partir del crucigrama generado.
+
+abstract class _$Puzzle extends $Notifier<model.CrosswordPuzzleGame> {
+  model.CrosswordPuzzleGame build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref =
+        this.ref as $Ref<model.CrosswordPuzzleGame, model.CrosswordPuzzleGame>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<model.CrosswordPuzzleGame, model.CrosswordPuzzleGame>,
+              model.CrosswordPuzzleGame,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
 /// Estadísticas formateadas para el panel.
 
 @ProviderFor(DisplayInfo)

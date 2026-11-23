@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -131,10 +133,14 @@ abstract class Crossword implements Built<Crossword, CrosswordBuilder> {
 
   /// Intenta agregar una palabra. Devuelve el nuevo crucigrama si la palabra
   /// respeta las reglas, o null si no se puede colocar ahí.
+  ///
+  /// Con [requireOverlap] en false la palabra no necesita cruzarse con otra
+  /// (se usa en el juego, donde el jugador elige palabras en cualquier orden).
   Crossword? addWord({
     required Location location,
     required String word,
     required Direction direction,
+    bool requireOverlap = true,
   }) {
     // La palabra no puede estar repetida.
     if (words.map((crosswordWord) => crosswordWord.word).contains(word)) {
@@ -164,7 +170,7 @@ abstract class Crossword implements Built<Crossword, CrosswordBuilder> {
     }
 
     // Salvo la primera, toda palabra debe cruzarse con otra.
-    if (words.isNotEmpty && !overlap) {
+    if (requireOverlap && words.isNotEmpty && !overlap) {
       return null;
     }
 
@@ -493,6 +499,168 @@ abstract class DisplayInfo implements Built<DisplayInfo, DisplayInfoBuilder> {
   DisplayInfo._();
 }
 
+/// Estado del juego: el crucigrama resuelto, las palabras alternativas que se
+/// ofrecen como opciones y las palabras que eligió el jugador.
+abstract class CrosswordPuzzleGame
+    implements Built<CrosswordPuzzleGame, CrosswordPuzzleGameBuilder> {
+  static Serializer<CrosswordPuzzleGame> get serializer =>
+      _$crosswordPuzzleGameSerializer;
+
+  /// El crucigrama con la solución.
+  Crossword get crossword;
+
+  /// Palabras distractoras para cada palabra, según su ubicación y dirección.
+  BuiltMap<Location, BuiltMap<Direction, BuiltList<String>>>
+  get alternateWords;
+
+  /// Palabras que eligió el jugador.
+  BuiltList<CrosswordWord> get selectedWords;
+
+  /// Crucigrama formado solo por las palabras elegidas.
+  Crossword get crosswordFromSelectedWords => Crossword.crossword(
+    width: crossword.width,
+    height: crossword.height,
+    words: selectedWords,
+  );
+
+  /// El juego está resuelto cuando se eligió una palabra para cada lugar
+  /// y el resultado es un crucigrama válido.
+  bool get solved =>
+      crossword.words.isNotEmpty &&
+      selectedWords.length == crossword.words.length &&
+      crosswordFromSelectedWords.valid;
+
+  /// Indica si la palabra encaja con las que ya eligió el jugador.
+  bool canSelectWord({
+    required Location location,
+    required String word,
+    required Direction direction,
+  }) {
+    final crosswordWord = CrosswordWord.word(
+      word: word,
+      location: location,
+      direction: direction,
+    );
+
+    // Elegir de nuevo una palabra ya elegida la quita: siempre se permite.
+    if (selectedWords.contains(crosswordWord)) {
+      return true;
+    }
+
+    return _withWord(crosswordWord) != null;
+  }
+
+  /// Elige (o quita, si ya estaba elegida) una palabra. Devuelve null si la
+  /// elección no es válida.
+  CrosswordPuzzleGame? selectWord({
+    required Location location,
+    required String word,
+    required Direction direction,
+  }) {
+    final crosswordWord = CrosswordWord.word(
+      word: word,
+      location: location,
+      direction: direction,
+    );
+
+    if (selectedWords.contains(crosswordWord)) {
+      return rebuild((b) => b.selectedWords.remove(crosswordWord));
+    }
+
+    // Solo se puede elegir la palabra real o una de sus alternativas.
+    final isAnswer = crossword.words.contains(crosswordWord);
+    final isAlternate =
+        alternateWords[location]?[direction]?.contains(word) ?? false;
+    if (!isAnswer && !isAlternate) {
+      return null;
+    }
+
+    final updated = _withWord(crosswordWord);
+    if (updated == null) {
+      return null;
+    }
+
+    return rebuild((b) => b.selectedWords.replace(updated));
+  }
+
+  /// Reemplaza la palabra elegida en ese lugar por [crosswordWord] y
+  /// comprueba que encaje con el resto. Devuelve la nueva lista o null.
+  BuiltList<CrosswordWord>? _withWord(CrosswordWord crosswordWord) {
+    final others = selectedWords.rebuild(
+      (b) => b.removeWhere(
+        (selected) =>
+            selected.location == crosswordWord.location &&
+            selected.direction == crosswordWord.direction,
+      ),
+    );
+
+    final candidate = Crossword.crossword(
+      width: crossword.width,
+      height: crossword.height,
+      words: others,
+    ).addWord(
+      location: crosswordWord.location,
+      word: crosswordWord.word,
+      direction: crosswordWord.direction,
+      requireOverlap: false,
+    );
+    if (candidate == null) {
+      return null;
+    }
+
+    return others.rebuild((b) => b.add(crosswordWord));
+  }
+
+  /// Crea el juego eligiendo 4 palabras distractoras del mismo largo para
+  /// cada palabra del crucigrama.
+  factory CrosswordPuzzleGame.from({
+    required Crossword crossword,
+    required BuiltSet<String> candidateWords,
+  }) {
+    final random = Random();
+    final usedWords = crossword.words.map((word) => word.word).toSet();
+
+    // Agrupa las candidatas por largo para elegir rápido.
+    final wordsByLength = <int, List<String>>{};
+    for (final word in candidateWords) {
+      if (usedWords.contains(word)) continue;
+      wordsByLength.putIfAbsent(word.length, () => []).add(word);
+    }
+
+    final alternates =
+        MapBuilder<Location, BuiltMap<Direction, BuiltList<String>>>();
+    for (final word in crossword.words) {
+      final pool = wordsByLength[word.word.length] ?? [];
+      final picked = <String>[];
+      while (picked.length < 4 && pool.isNotEmpty) {
+        // Saca una palabra al azar para no repetirla en otra pregunta.
+        final index = random.nextInt(pool.length);
+        picked.add(pool[index]);
+        pool[index] = pool.last;
+        pool.removeLast();
+      }
+      final alternateWords = BuiltList<String>(picked..sort());
+
+      alternates.updateValue(
+        word.location,
+        (b) => b.rebuild((b) => b[word.direction] = alternateWords),
+        ifAbsent: () => BuiltMap({word.direction: alternateWords}),
+      );
+    }
+
+    return CrosswordPuzzleGame((b) {
+      b
+        ..crossword.replace(crossword)
+        ..alternateWords.replace(alternates.build());
+    });
+  }
+
+  factory CrosswordPuzzleGame([
+    void Function(CrosswordPuzzleGameBuilder)? updates,
+  ]) = _$CrosswordPuzzleGame;
+  CrosswordPuzzleGame._();
+}
+
 /// Serializadores para todos los modelos.
 @SerializersFor([
   Location,
@@ -502,5 +670,6 @@ abstract class DisplayInfo implements Built<DisplayInfo, DisplayInfoBuilder> {
   Crossword,
   WorkQueue,
   DisplayInfo,
+  CrosswordPuzzleGame,
 ])
 final Serializers serializers = _$serializers;

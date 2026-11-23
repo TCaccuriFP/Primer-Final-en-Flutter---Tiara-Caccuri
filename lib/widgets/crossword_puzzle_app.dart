@@ -2,34 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
-import 'crossword_info_widget.dart';
-import 'crossword_widget.dart';
+import 'crossword_generator_widget.dart';
+import 'crossword_puzzle_widget.dart';
+import 'puzzle_completed_widget.dart';
 
-class CrosswordGeneratorApp extends StatelessWidget {
-  const CrosswordGeneratorApp({super.key});
+/// Pantalla principal: muestra la generación, luego el juego y, al
+/// resolverlo, la pantalla de felicitaciones.
+class CrosswordPuzzleApp extends StatelessWidget {
+  const CrosswordPuzzleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return _EagerInitialization(
       child: Scaffold(
         appBar: AppBar(
-          actions: [_CrosswordGeneratorMenu()],
+          actions: [_CrosswordPuzzleAppMenu()],
           titleTextStyle: TextStyle(
             color: Theme.of(context).colorScheme.primary,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
-          title: Text('Crossword Generator'),
+          title: Text('Crossword Puzzle'),
         ),
         body: SafeArea(
           child: Consumer(
             builder: (context, ref, _) {
-              final showDisplayInfo = ref.watch(showDisplayInfoProvider);
-              return Stack(
-                children: [
-                  Positioned.fill(child: CrosswordWidget()),
-                  if (showDisplayInfo) CrosswordInfoWidget(),
-                ],
+              final workQueueAsync = ref.watch(workQueueProvider);
+              final puzzleSolved = ref.watch(
+                puzzleProvider.select((puzzle) => puzzle.solved),
+              );
+              final puzzleReady = ref.watch(
+                puzzleProvider.select(
+                  (puzzle) => puzzle.crossword.words.isNotEmpty,
+                ),
+              );
+
+              return workQueueAsync.when(
+                data: (workQueue) {
+                  if (puzzleSolved) {
+                    return PuzzleCompletedWidget();
+                  }
+                  if (workQueue.isCompleted &&
+                      workQueue.crossword.characters.isNotEmpty &&
+                      puzzleReady) {
+                    return CrosswordPuzzleWidget();
+                  }
+                  return CrosswordGeneratorWidget();
+                },
+                error: (error, stackTrace) => Center(child: Text('$error')),
+                loading: () => Center(child: CircularProgressIndicator()),
               );
             },
           ),
@@ -51,8 +72,8 @@ class _EagerInitialization extends ConsumerWidget {
   }
 }
 
-/// Menú para elegir el tamaño del crucigrama.
-class _CrosswordGeneratorMenu extends ConsumerWidget {
+/// Menú para elegir tamaño, cantidad de isolates y mostrar estadísticas.
+class _CrosswordPuzzleAppMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => MenuAnchor(
     menuChildren: [
