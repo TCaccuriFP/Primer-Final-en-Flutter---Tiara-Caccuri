@@ -61,6 +61,7 @@ class Size extends _$Size {
 /// actual y los datos para las estadísticas.
 @riverpod
 Stream<model.WorkQueue> workQueue(Ref ref) async* {
+  final workers = ref.watch(workerCountProvider);
   final size = ref.watch(sizeProvider);
   final wordListAsync = ref.watch(wordListProvider);
 
@@ -81,6 +82,7 @@ Stream<model.WorkQueue> workQueue(Ref ref) async* {
     data: (wordList) => exploreCrosswordSolutions(
       crossword: emptyCrossword,
       wordList: wordList,
+      maxWorkerCount: workers.count,
     ),
     error: (error, stackTrace) async* {
       debugPrint('Error loading word list: $error');
@@ -174,6 +176,32 @@ class ShowDisplayInfo extends _$ShowDisplayInfo {
     _display = !_display;
     ref.invalidateSelf();
   }
+}
+
+/// Cantidades posibles de isolates trabajando en paralelo.
+enum BackgroundWorkers {
+  one(1),
+  two(2),
+  four(4),
+  eight(8),
+  sixteen(16),
+  thirtyTwo(32),
+  sixtyFour(64),
+  oneTwentyEight(128);
+
+  const BackgroundWorkers(this.count);
+
+  final int count;
+  String get label => count.toString();
+}
+
+/// Cantidad de isolates elegida (4 por defecto).
+@Riverpod(keepAlive: true)
+class WorkerCount extends _$WorkerCount {
+  @override
+  BackgroundWorkers build() => BackgroundWorkers.four;
+
+  void setCount(BackgroundWorkers count) => state = count;
 }
 
 /// Estadísticas formateadas para el panel.

@@ -154,7 +154,7 @@ final class WorkQueueProvider
   }
 }
 
-String _$workQueueHash() => r'3e484a5afe91003b1523ffb42caa6b24967376a6';
+String _$workQueueHash() => r'dca73cc7fb2cef3f5dcfdcc3a0926167e88c1083';
 
 /// Momento en que empezó la generación.
 
@@ -368,6 +368,64 @@ abstract class _$ShowDisplayInfo extends $Notifier<bool> {
             as $ClassProviderElement<
               AnyNotifier<bool, bool>,
               bool,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// Cantidad de isolates elegida (4 por defecto).
+
+@ProviderFor(WorkerCount)
+final workerCountProvider = WorkerCountProvider._();
+
+/// Cantidad de isolates elegida (4 por defecto).
+final class WorkerCountProvider
+    extends $NotifierProvider<WorkerCount, BackgroundWorkers> {
+  /// Cantidad de isolates elegida (4 por defecto).
+  WorkerCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'workerCountProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$workerCountHash();
+
+  @$internal
+  @override
+  WorkerCount create() => WorkerCount();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BackgroundWorkers value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BackgroundWorkers>(value),
+    );
+  }
+}
+
+String _$workerCountHash() => r'2ad37f8d0910bc9feecb657f3b6286d4ab34ed99';
+
+/// Cantidad de isolates elegida (4 por defecto).
+
+abstract class _$WorkerCount extends $Notifier<BackgroundWorkers> {
+  BackgroundWorkers build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<BackgroundWorkers, BackgroundWorkers>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<BackgroundWorkers, BackgroundWorkers>,
+              BackgroundWorkers,
               Object?,
               Object?
             >;

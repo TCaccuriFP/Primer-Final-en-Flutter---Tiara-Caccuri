@@ -16,6 +16,7 @@ class CrosswordInfoWidget extends ConsumerWidget {
     final startTime = ref.watch(startTimeProvider);
     final endTime = ref.watch(endTimeProvider);
     final remaining = ref.watch(expectedRemainingTimeProvider);
+    final workers = ref.watch(workerCountProvider);
 
     return Align(
       alignment: Alignment.bottomRight,
@@ -42,6 +43,7 @@ class CrosswordInfoWidget extends ConsumerWidget {
                       label: 'Grid Size',
                       value: '${size.width} x ${size.height}',
                     ),
+                    _infoRow(label: 'Max worker count', value: workers.label),
                     _infoRow(
                       label: 'Words in grid',
                       value: displayInfo.wordsInGridCount,
