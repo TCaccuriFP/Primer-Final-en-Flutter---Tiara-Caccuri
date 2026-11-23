@@ -109,14 +109,12 @@ abstract class _$Size extends $Notifier<CrosswordSize> {
   }
 }
 
-/// Genera un crucigrama colocando palabras al azar cada 100 ms
-/// hasta llenar el 80 % de las celdas.
+/// Genera un crucigrama válido buscando soluciones en un isolate.
 
 @ProviderFor(crossword)
 final crosswordProvider = CrosswordProvider._();
 
-/// Genera un crucigrama colocando palabras al azar cada 100 ms
-/// hasta llenar el 80 % de las celdas.
+/// Genera un crucigrama válido buscando soluciones en un isolate.
 
 final class CrosswordProvider
     extends
@@ -126,8 +124,7 @@ final class CrosswordProvider
           Stream<model.Crossword>
         >
     with $FutureModifier<model.Crossword>, $StreamProvider<model.Crossword> {
-  /// Genera un crucigrama colocando palabras al azar cada 100 ms
-  /// hasta llenar el 80 % de las celdas.
+  /// Genera un crucigrama válido buscando soluciones en un isolate.
   CrosswordProvider._()
     : super(
         from: null,
@@ -154,4 +151,4 @@ final class CrosswordProvider
   }
 }
 
-String _$crosswordHash() => r'5de9f05091b3f0dad7c14a322ba090df2e63fae0';
+String _$crosswordHash() => r'8e2df416519f01ee1d6c1b64659f687d37cc07f2';

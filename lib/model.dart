@@ -128,13 +128,46 @@ abstract class CrosswordCharacter
 abstract class Crossword implements Built<Crossword, CrosswordBuilder> {
   static Serializer<Crossword> get serializer => _$crosswordSerializer;
 
-  /// Agrega una palabra (en este paso todavía sin validar).
-  Crossword addWord({
+  /// Intenta agregar una palabra. Devuelve el nuevo crucigrama si la palabra
+  /// respeta las reglas, o null si no se puede colocar ahí.
+  Crossword? addWord({
     required Location location,
     required String word,
     required Direction direction,
   }) {
-    return rebuild(
+    // La palabra no puede estar repetida.
+    if (words.map((crosswordWord) => crosswordWord.word).contains(word)) {
+      return null;
+    }
+
+    final wordCharacters = word.characters;
+    bool overlap = false;
+
+    // Cada letra debe coincidir con la que ya hay en la grilla (si hay una).
+    for (final (index, character) in wordCharacters.indexed) {
+      final characterLocation = direction == Direction.across
+          ? location.rightOffset(index)
+          : location.downOffset(index);
+
+      final target = characters[characterLocation];
+      if (target != null) {
+        overlap = true;
+        if (target.character != character) {
+          return null;
+        }
+        if (direction == Direction.across && target.acrossWord != null ||
+            direction == Direction.down && target.downWord != null) {
+          return null;
+        }
+      }
+    }
+
+    // Salvo la primera, toda palabra debe cruzarse con otra.
+    if (words.isNotEmpty && !overlap) {
+      return null;
+    }
+
+    final candidate = rebuild(
       (b) => b
         ..words.add(
           CrosswordWord.word(
@@ -144,6 +177,66 @@ abstract class Crossword implements Built<Crossword, CrosswordBuilder> {
           ),
         ),
     );
+
+    if (candidate.valid) {
+      return candidate;
+    } else {
+      return null;
+    }
+  }
+
+  /// Comprueba que el crucigrama cumple todas las reglas.
+  bool get valid {
+    // No puede haber palabras repetidas.
+    final wordStrings = words.map((word) => word.word).toSet();
+    if (wordStrings.length != words.length) {
+      return false;
+    }
+
+    for (final MapEntry(key: location, value: character)
+        in characters.entries) {
+      // Toda letra debe pertenecer a una palabra horizontal o vertical.
+      if (character.acrossWord == null && character.downWord == null) {
+        return false;
+      }
+
+      // Toda letra debe estar dentro de la grilla.
+      if (location.x < 0 ||
+          location.y < 0 ||
+          location.x >= width ||
+          location.y >= height) {
+        return false;
+      }
+
+      // Las letras de arriba y abajo deben ser de la misma palabra vertical.
+      final upTile = characters[location.up];
+      if (upTile != null) {
+        if (character.downWord == null) return false;
+        if (upTile.downWord != character.downWord) return false;
+      }
+
+      final downTile = characters[location.down];
+      if (downTile != null) {
+        if (character.downWord == null) return false;
+        if (downTile.downWord != character.downWord) return false;
+      }
+
+      // Las letras de izquierda y derecha deben ser de la misma palabra
+      // horizontal.
+      final leftTile = characters[location.left];
+      if (leftTile != null) {
+        if (character.acrossWord == null) return false;
+        if (leftTile.acrossWord != character.acrossWord) return false;
+      }
+
+      final rightTile = characters[location.right];
+      if (rightTile != null) {
+        if (character.acrossWord == null) return false;
+        if (rightTile.acrossWord != character.acrossWord) return false;
+      }
+    }
+
+    return true;
   }
 
   /// Calcula [characters] a partir de [words] cada vez que se construye.
